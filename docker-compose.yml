@@ -9,6 +9,7 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-currents_demo_2026}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-currents_root_demo_2026}
     ports: ["${DB_PORT:-17729}:3306"]
+    command: ['--max-allowed-packet=64M']
     volumes: [db_data:/var/lib/mysql]
     healthcheck:
       test: [CMD-SHELL, 'mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent']

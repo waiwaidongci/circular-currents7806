@@ -36,7 +36,7 @@ docker compose exec -T backend python -m scripts.seed_demo
 
 ## 实体、页面与代码
 
-DirectionSurvey、Mooring、BearingReading、DirectionRun、ObservationNote分别贯穿model/schema/service/controller/route和前端API/store/页面。调查/浮标/采样code唯一；角度使用MySQL DOUBLE。每期每浮标最多250条，可新增调查、导入JSON角度、编辑调查备注；浮标说明仅admin可编辑。
+DirectionSurvey、Mooring、BearingReading、DirectionRun、ObservationNote分别贯穿model/schema/service/controller/route和前端API/store/页面。调查/浮标/采样code唯一；角度使用MySQL DOUBLE。每期每浮标最多100000条，分批导入JSON角度、每批最多5000条，可新增调查、编辑调查备注；浮标说明仅admin可编辑。
 
 六页：研究首页、浮标与采样、圆周研究、方向与差异、观察说明、研究留痕。PolarPlot在首页和结果页复用；RunSelect/PageHeading/StatusBadge/ErrorNotice共享；useTask/usePolling管理恢复与刷新。JWT角色、Redis按来源分钟配额、全局错误处理和审计组成横切模块。
 
@@ -58,9 +58,11 @@ R<1e−8时均值方向为空、单峰集中度MLE为0；1−R<1e−8时集中�
 
 组内包含对角零，与去对角U统计不同；微小负浮点误差截为0。拼接观测后随机交换标签，固定两组大小，保存全部置换值；上尾p=(1+达到或超过观测次数)/(B+1)，比较含1e−12容差。输入按采样code稳定排序，固定seed和参数可完整复算。+1口径参考[SciPy permutation_test](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.permutation_test.html)。
 
+距离和按精确恒等式求值：角度排序后d(i,j)=2[sin(θj/2)cos(θi/2)−cos(θj/2)sin(θi/2)]，组内与交叉距离和由半角正余弦前缀和O(N log N)精确得到，不抽样、不分箱、不用近似距离；置换序列沿用default_rng(seed).permutation，同种子小样本统计量与零分布逐项误差<1e−10、p值一致。两组各100000条、999次置换在单计算进程约十秒级完成，峰值内存低于512MB。
+
 [0,0]对[180,180]的E=4，六种固定大小分组中两种达到该极端，精确随机化参考p=1/3；随机999次近似此值。[0,180]对[0,180]的E=0且p=1。
 
-每组2–250有限角度、99–999置换；同浮标不得同时引用。360、NaN、Inf、bool等非法角度返回422；空组保留明确failed任务。研究保存原始输入快照、配置、零分布和SHA256，新增采样不会改写旧结果。
+每组2–100000有限角度、99–999置换；同浮标不得同时引用。360、NaN、Inf、bool等非法角度返回422；空组保留明确failed任务；单批导入超过5000条或每组累计超过100000条明确422拒绝。研究保存原始输入快照、配置、零分布和SHA256，新增采样不会改写旧结果；结果页列表不携带大快照，输入快照按组分页读取，大研究可正常打开。
 
 ## 技术与配置
 
@@ -83,5 +85,5 @@ SEED_DEMO=true自动seed，异常只记日志；脚本可独立执行。初始3�
 - 合成独立角度，不连接设备；真实连续观测的自相关未经处理不能直接套iid标签置换。
 - von Mises单峰描述，无均值/κ置信区间；R₂为描述阈值，少量观测尤其不稳。
 - energy比较分布，小p不代表效应大小或成因；重复研究未作跨研究多重校正，不自动行动。
-- JSON输入已规范角度，不把未知角度归零；每组最多250条/999置换，未做生产压测。
+- JSON输入已规范角度，不把未知角度归零；每组最多100000条/999置换，超出明确拒绝；更大规模需另行评估。
 - 单worker无running恢复/事务outbox，中断需另建任务；metadata首建表，Google字体离线回退。

@@ -1,4 +1,5 @@
 from pydantic import BaseModel,Field,field_validator
+from src.constants.limits import IMPORT_BATCH_SIZE
 class BearingInput(BaseModel):
     code:str=Field(min_length=2,max_length=60)
     bearing:float=Field(ge=0,lt=360,allow_inf_nan=False,strict=True)
@@ -6,7 +7,7 @@ class BearingInput(BaseModel):
 class BearingImport(BaseModel):
     survey_id:int=Field(gt=0)
     mooring_id:int=Field(gt=0)
-    readings:list[BearingInput]=Field(min_length=1,max_length=250)
+    readings:list[BearingInput]=Field(min_length=1,max_length=IMPORT_BATCH_SIZE)
     @field_validator('readings')
     @classmethod
     def unique(cls,rows):
